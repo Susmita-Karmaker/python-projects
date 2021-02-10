@@ -1,0 +1,139 @@
+from pprint import pprint as pp
+places=["farmgate","gulshan","dhanmondi"]
+class BusService:
+    def __init__(self,place,bus):
+        self._place = place
+        self._bus = bus
+        rows,seats=self._bus.seating_plan()
+        self._seating=[None]+[{letter:None for letter in seats}for _ in rows]
+
+    def allocate_seate(self, seat, passenger):
+        """Allocate a seat to passenger
+        args:
+             seat:a seat designator such as '1C' or '2D'
+             passenger: name of the passenger
+        raises:
+               ValueError: if seat is unavailable
+        """
+        row, letter = self._parse_seat(seat)
+
+        if self._seating[row][letter] is not None:
+            raise ValueError(f"seat {seat} is already occupied")
+        self._seating[row][letter] = passenger
+
+    def _parse_seat(self, seat):
+        rows, seat_letters = self._bus.seating_plan()
+        letter = seat[-1]
+        if letter not in seat_letters:
+            raise ValueError(f"Invalid seat letter {letter}")
+        row_text = seat[:-1]
+        try:
+            row = int(row_text)
+        except ValueError:
+            raise ValueError(f"invalid row seats {row_text}")
+        if row not in rows:
+            raise ValueError(f"Invalid row number {row} ")
+        return row, letter
+    def relocate_passenger(self,from_seat,to_seat):
+        """Relocate passenger to a different seat
+
+        args:
+             from_seat: the existing seat designation of the passenger to be moved
+             to_seat:the new seat designator
+             """
+        from_row,from_letter=self._parse_seat(from_seat)
+        if self._seating[from_row][from_letter] is None:
+            raise ValueError(f"no passenger to relocate from seat {from_seat}")
+        to_row,to_ltter=self._parse_seat(to_seat)
+        if self._seating[to_row][to_ltter] is not None:
+            raise ValueError(f"seat {to_seat} is already occupied")
+        self._seating[to_row][to_ltter]=self._seating[from_row][from_letter]
+        self._seating[from_row][from_letter]=None
+    def num_available_seats(self):
+        return sum(sum(1 for s in row.values() if s is None)
+                   for row in self._seating
+                   if row is not None)
+    def make_booking_cards(self,card_printer):
+        for passenger, seat in sorted(self._passenger_seats()):
+            card_printer(passenger,seat,self.place())
+    def _passenger_seats(self):
+        """An iterable series of passenger seats locations"""
+        row_numbers,seat_letters=self._bus.seating_plan()
+        for row in row_numbers:
+            for letter in seat_letters:
+                passenger = self._seating[row][letter]
+                if passenger is not None:
+                    yield (passenger,f"{row}{letter}")
+    def bus_model(self):
+        return self._bus.model()
+    def place(self):
+        return self._place
+
+class BusModel:
+    def __init__(self,model):
+        self._model=model
+    def model(self):
+        return self._model
+    def seating_plan(self):
+        return (range(1,11),"ABCD"[:4])
+
+class Gulshan(BusModel):
+    pass
+class Farmgate(BusModel):
+    pass
+class Dhanmondi(BusModel):
+    pass
+
+
+def console_card_printer(passenger,seat,place):
+    output=f"| Name:{passenger}"        \
+           f"  to_go:{place}"           \
+           f"  seat:{seat}"             \
+           " |"
+    banner="+"+"-"*(len(output)-2)+"+"
+    border="|"+" "*(len(output)-2)+"|"
+    lines=[banner,border,output,border,banner]
+    card="\n".join(lines)
+    print(card)
+    print()
+
+
+def make_trip():
+    to_go=input("please resure your destination if you want to change you can>")
+    if to_go.upper()=="GULSHAN":
+        f = BusService(to_go,Gulshan(input("AC/NON-AC>")))
+        ticket_no=int(input("how many tickets do you want>"))
+        for i in range(ticket_no):
+            f.allocate_seate(input("enter seat no(1A-10D)>"), input("enter passenger name>"))
+        return f
+    elif to_go.upper()=="DHANMONDI":
+        h = BusService(to_go, Dhanmondi(input("bus type:'ac','non-ac>")))
+        ticket_no = int(input("how many tickets do you want>"))
+        for i in range(ticket_no):
+            h.allocate_seate(input("enter seat no>"), input("enter passenger name>"))
+        return h
+    elif to_go.upper()=="FARMGATE":
+        j = BusService(to_go, Farmgate(input("bus type:'ac','non-ac>")))
+        ticket_no = int(input("how many tickets do you want(not more than 40)>"))
+        for i in range(ticket_no):
+            j.allocate_seate(input("enter seat no>"), input("enter passenger name>"))
+        return j
+
+
+def final_booking():
+    give=input("please type your destination[gulshan,dhanmondi,farmgate]>")
+    if give in places:
+        f = make_trip()
+        print(f.bus_model())
+        a=input("do you want to relocate your seat(yes/no)>")
+        if a.upper()=="YES":
+            print(f.relocate_passenger(input("from seat>"), input("to seat>")))
+        else:
+            pass
+        pp(f._seating)
+        print(f.num_available_seats())
+        f.make_booking_cards(console_card_printer)
+    else:
+        print("sorry we are not available")
+
+g=final_booking()
