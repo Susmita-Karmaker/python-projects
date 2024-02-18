@@ -1,2 +1,2 @@
 # python-projects
-simple projects using python language
+Simple projects using python language
